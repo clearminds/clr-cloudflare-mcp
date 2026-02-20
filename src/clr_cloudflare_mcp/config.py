@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     Priority order:
     1. Environment variables (CLOUDFLARE_API_TOKEN) - base/fallback
     2. ~/.config/cloudflare/credentials.json or token file - takes priority
+
+    Attributes:
+        cloudflare_api_token: Cloudflare API bearer token.
+        cloudflare_transport: MCP transport protocol (stdio or sse).
+        cloudflare_log_level: Logging verbosity level.
     """
 
     cloudflare_api_token: str = ""
@@ -34,7 +39,11 @@ class Settings(BaseSettings):
     model_config = {"env_prefix": ""}
 
     def load_credentials(self) -> dict[str, Any]:
-        """Load credentials with env-first, config-file-override pattern."""
+        """Load credentials with env-first, config-file-override pattern.
+
+        Returns:
+            A dictionary containing the loaded credentials (e.g. ``api_token``).
+        """
         creds: dict[str, Any] = {}
 
         # 1. FIRST: Load from environment variables (base/fallback)
@@ -68,4 +77,5 @@ class Settings(BaseSettings):
         return creds
 
     def _has_required_creds(self, creds: dict[str, Any]) -> bool:
+        """Check whether the required ``api_token`` credential is present."""
         return bool(creds.get("api_token"))

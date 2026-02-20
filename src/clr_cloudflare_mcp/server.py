@@ -24,6 +24,11 @@ _zone_cache: dict[str, str] = {}
 
 
 def _headers() -> dict[str, str]:
+    """Build HTTP headers with Cloudflare API bearer-token authorization.
+
+    Returns:
+        A dictionary of HTTP headers including Authorization and Content-Type.
+    """
     creds = _settings.load_credentials()
     token = creds.get("api_token", "")
     return {
@@ -32,8 +37,20 @@ def _headers() -> dict[str, str]:
     }
 
 
-def _request(method: str, endpoint: str, data: dict | None = None) -> dict:
-    """Make Cloudflare API request."""
+def _request(method: str, endpoint: str, data: dict[str, Any] | None = None) -> dict[str, Any]:
+    """Make a Cloudflare API request and return the JSON response.
+
+    Args:
+        method: HTTP method (GET, POST, PUT, DELETE, etc.).
+        endpoint: API endpoint path relative to the Cloudflare v4 base URL.
+        data: Optional JSON body payload.
+
+    Returns:
+        The parsed JSON response dictionary.
+
+    Raises:
+        Exception: If the Cloudflare API returns an error response.
+    """
     url = f"{API_BASE}/{endpoint}"
     resp = httpx.request(method, url, headers=_headers(), json=data, timeout=30)
     result = resp.json()
@@ -60,7 +77,20 @@ def _request(method: str, endpoint: str, data: dict | None = None) -> dict:
 
 
 def _resolve_zone_id(domain: str) -> str:
-    """Resolve a domain name to its zone ID."""
+    """Resolve a domain name to its Cloudflare zone ID.
+
+    If *domain* is already a 32-character hex zone ID it is returned as-is.
+    Otherwise, the zone list is queried and the result is cached.
+
+    Args:
+        domain: Domain name (e.g. ``example.com``) or 32-char hex zone ID.
+
+    Returns:
+        The Cloudflare zone ID string.
+
+    Raises:
+        Exception: If the zone cannot be found.
+    """
     if domain in _zone_cache:
         return _zone_cache[domain]
     if re.match(r"^[0-9a-f]{32}$", domain):
@@ -78,7 +108,11 @@ def _resolve_zone_id(domain: str) -> str:
 
 @mcp.tool
 def cf_verify_token() -> dict[str, Any]:
-    """Verify that the Cloudflare API token is valid."""
+    """Verify that the Cloudflare API token is valid.
+
+    Returns:
+        A dictionary with the token ``status`` and ``id``.
+    """
     result = _request("GET", "user/tokens/verify")
     info = result.get("result", {})
     return {"status": info.get("status", "unknown"), "id": info.get("id", "N/A")}
@@ -86,7 +120,11 @@ def cf_verify_token() -> dict[str, Any]:
 
 @mcp.tool
 def cf_list_zones() -> list[dict[str, Any]]:
-    """List all Cloudflare zones (domains) in the account."""
+    """List all Cloudflare zones (domains) in the account.
+
+    Returns:
+        A list of zone dictionaries containing id, name, status, and name_servers.
+    """
     result = _request("GET", "zones?per_page=50")
     return [
         {
@@ -105,6 +143,9 @@ def cf_get_zone(domain: str) -> dict[str, Any]:
 
     Args:
         domain: Domain name or zone ID.
+
+    Returns:
+        A dictionary with zone id, name, status, name_servers, and plan.
     """
     zone_id = _resolve_zone_id(domain)
     result = _request("GET", f"zones/{zone_id}")
@@ -127,6 +168,10 @@ def cf_list_dns_records(domain: str) -> list[dict[str, Any]]:
 
     Args:
         domain: Domain name or zone ID.
+
+    Returns:
+        A list of DNS record dictionaries with id, type, name, content,
+        proxied, and ttl fields.
     """
     zone_id = _resolve_zone_id(domain)
     result = _request("GET", f"zones/{zone_id}/dns_records")
@@ -161,6 +206,9 @@ def cf_add_dns_record(
         content: Record content (IP, hostname, text value).
         proxied: Enable Cloudflare proxy (orange cloud). Only for A/AAAA/CNAME.
         ttl: TTL in seconds (1 = auto).
+
+    Returns:
+        A dictionary with the created record's id, type, name, and content.
     """
     zone_id = _resolve_zone_id(domain)
     data = {
@@ -189,6 +237,9 @@ def cf_update_dns_record(
         record_id: The DNS record ID to update.
         content: New record content (IP, hostname, text value).
         proxied: Enable/disable Cloudflare proxy.
+
+    Returns:
+        A dictionary with the updated record's id, type, name, and content.
     """
     zone_id = _resolve_zone_id(domain)
     existing = _request("GET", f"zones/{zone_id}/dns_records/{record_id}")
@@ -212,6 +263,9 @@ def cf_delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
     Args:
         domain: Domain name or zone ID.
         record_id: The DNS record ID to delete.
+
+    Returns:
+        A dictionary with status ``"deleted"`` and the deleted record_id.
     """
     zone_id = _resolve_zone_id(domain)
     _request("DELETE", f"zones/{zone_id}/dns_records/{record_id}")
@@ -235,6 +289,12 @@ def cf_purge_cache(
         purge_all: Purge everything (use with caution).
         urls: List of specific URLs to purge.
         prefixes: List of URL prefixes to purge.
+
+    Returns:
+        A dictionary with status ``"purged"`` and the purge job id.
+
+    Raises:
+        Exception: If none of purge_all, urls, or prefixes is specified.
     """
     zone_id = _resolve_zone_id(domain)
     if purge_all:
@@ -258,6 +318,9 @@ def cf_list_routes(domain: str) -> list[dict[str, Any]]:
 
     Args:
         domain: Domain name or zone ID.
+
+    Returns:
+        A list of route dictionaries with id, pattern, and script fields.
     """
     zone_id = _resolve_zone_id(domain)
     result = _request("GET", f"zones/{zone_id}/workers/routes")
@@ -275,6 +338,9 @@ def cf_add_route(domain: str, pattern: str, worker: str) -> dict[str, Any]:
         domain: Domain name or zone ID.
         pattern: Route pattern (e.g. example.com/api/*).
         worker: Worker script name.
+
+    Returns:
+        A dictionary with the new route's id, pattern, and script.
     """
     zone_id = _resolve_zone_id(domain)
     data = {"pattern": pattern, "script": worker}
