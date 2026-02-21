@@ -16,6 +16,14 @@ _settings: Settings | None = None
 
 API_BASE = "https://api.cloudflare.com/client/v4"
 
+WRITE_TOOLS = [
+    "cf_add_dns_record",
+    "cf_update_dns_record",
+    "cf_delete_dns_record",
+    "cf_purge_cache",
+    "cf_add_route",
+]
+
 # Zone ID cache to avoid repeated lookups
 _zone_cache: dict[str, str] = {}
 
@@ -362,6 +370,12 @@ def main() -> None:
     parser.add_argument(
         "--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"],
     )
+    parser.add_argument(
+        "--read-only",
+        action="store_true",
+        default=None,
+        help="Run in read-only mode (hide write tools)",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(
@@ -382,6 +396,12 @@ def main() -> None:
             "~/.config/cloudflare/credentials.json"
         )
         sys.exit(1)
+
+    read_only = args.read_only if args.read_only is not None else _settings.cf_read_only
+    if read_only and WRITE_TOOLS:
+        for name in WRITE_TOOLS:
+            mcp.remove_tool(name)
+        logging.info("Read-only mode: %d write tools removed", len(WRITE_TOOLS))
 
     mcp.run(transport=args.transport)
 

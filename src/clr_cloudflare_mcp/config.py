@@ -35,6 +35,7 @@ class Settings(BaseSettings):
 
     cloudflare_transport: str = "stdio"
     cloudflare_log_level: str = "INFO"
+    cf_read_only: bool = False
 
     model_config = {"env_prefix": ""}
 
