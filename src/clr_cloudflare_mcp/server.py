@@ -10,8 +10,10 @@ import httpx
 from fastmcp import FastMCP
 
 from clr_cloudflare_mcp.config import Settings
+from clr_cloudflare_mcp.middleware import ToolValidationMiddleware
 
 mcp = FastMCP("Cloudflare Extra")
+mcp.add_middleware(ToolValidationMiddleware())
 _settings: Settings | None = None
 
 API_BASE = "https://api.cloudflare.com/client/v4"
