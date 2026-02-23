@@ -27,6 +27,20 @@ Set `CLOUDFLARE_API_TOKEN` env var or create `~/.config/cloudflare/credentials.j
 }
 ```
 
+### Environment Variables
+
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API bearer token | `your-token` |
+
+Optional:
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `CF_READ_ONLY` | Run in read-only mode | `false` |
+| `CLOUDFLARE_TRANSPORT` | Transport protocol (`stdio` or `http`) | `stdio` |
+| `CLOUDFLARE_LOG_LEVEL` | Log level | `INFO` |
+
 ## Usage
 
 ```bash

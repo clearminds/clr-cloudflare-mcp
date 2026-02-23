@@ -10,6 +10,7 @@ import logging
 from pathlib import Path
 from typing import Any
 
+from pydantic import field_validator
 from pydantic_settings import BaseSettings
 
 logger = logging.getLogger(__name__)
@@ -36,6 +37,13 @@ class Settings(BaseSettings):
     cloudflare_transport: str = "stdio"
     cloudflare_log_level: str = "INFO"
     cf_read_only: bool = False
+
+    @field_validator("cf_read_only", mode="before")
+    @classmethod
+    def _empty_str_to_false(cls, v: Any) -> Any:
+        if v == "":
+            return False
+        return v
 
     model_config = {"env_prefix": ""}
 
