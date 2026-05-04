@@ -19,17 +19,14 @@ _settings: Settings | None = None
 # Imported here (not at the top) on purpose: annotations.py needs ``mcp`` from
 # this module, so importing it before the ``mcp = FastMCP(...)`` line above
 # would be a circular import. Do not move.
-from clr_cloudflare_mcp.annotations import read_tool, write_tool, destructive_tool  # noqa: E402
+from clr_cloudflare_mcp.annotations import (  # noqa: E402
+    destructive_tool,
+    read_tool,
+    remove_non_read_tools,
+    write_tool,
+)
 
 API_BASE = "https://api.cloudflare.com/client/v4"
-
-WRITE_TOOLS = [
-    "cf_add_dns_record",
-    "cf_update_dns_record",
-    "cf_delete_dns_record",
-    "cf_purge_cache",
-    "cf_add_route",
-]
 
 # Zone ID cache to avoid repeated lookups
 _zone_cache: dict[str, str] = {}
@@ -405,10 +402,9 @@ def main() -> None:
         sys.exit(1)
 
     read_only = args.read_only if args.read_only is not None else _settings.cf_read_only
-    if read_only and WRITE_TOOLS:
-        for name in WRITE_TOOLS:
-            mcp.remove_tool(name)
-        logging.info("Read-only mode: %d write tools removed", len(WRITE_TOOLS))
+    if read_only:
+        removed = remove_non_read_tools(mcp)
+        logging.info("Read-only mode: %d non-read tools removed", removed)
 
     mcp.run(transport=args.transport)
 
