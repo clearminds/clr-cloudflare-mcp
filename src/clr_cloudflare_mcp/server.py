@@ -392,7 +392,16 @@ def main() -> None:
 
     parser = argparse.ArgumentParser(description="Cloudflare MCP Server")
     parser.add_argument(
-        "--transport", choices=["stdio", "sse"], default="stdio",
+        "--transport", choices=["stdio", "http"], default="stdio",
+        help="MCP transport (stdio or http).",
+    )
+    parser.add_argument(
+        "--host", type=str, default="127.0.0.1",
+        help="HTTP host (only used with --transport http).",
+    )
+    parser.add_argument(
+        "--port", type=int, default=8000,
+        help="HTTP port (only used with --transport http).",
     )
     parser.add_argument(
         "--log-level", default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"],
@@ -429,7 +438,10 @@ def main() -> None:
         removed = remove_non_read_tools(mcp)
         logging.info("Read-only mode: %d non-read tools removed", removed)
 
-    mcp.run(transport=args.transport)
+    if args.transport == "http":
+        mcp.run(transport="http", host=args.host, port=args.port)
+    else:
+        mcp.run(transport=args.transport)
 
 
 if __name__ == "__main__":
