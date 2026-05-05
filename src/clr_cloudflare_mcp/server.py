@@ -360,29 +360,6 @@ def cf_add_route(domain: str, pattern: str, worker: str) -> dict[str, Any]:
     return {"id": result.get("result", {}).get("id"), "pattern": pattern, "script": worker}
 
 
-# ── Composite init ──────────────────────────────────────────────────
-
-
-def init_composite() -> FastMCP:
-    """Initialize for composite mounting. Returns the FastMCP instance."""
-    global _settings
-
-    _settings = Settings()
-    creds = _settings.load_credentials()
-
-    if not creds.get("api_token"):
-        raise RuntimeError(
-            "Missing CLOUDFLARE_API_TOKEN. Set env var or create "
-            "~/.config/cloudflare/credentials.json"
-        )
-
-    if _settings.cf_read_only and WRITE_TOOLS:
-        for name in WRITE_TOOLS:
-            mcp.remove_tool(name)
-
-    return mcp
-
-
 # ── Entry point ─────────────────────────────────────────────────────
 
 
