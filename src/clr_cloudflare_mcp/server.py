@@ -16,15 +16,17 @@ mcp = FastMCP("Cloudflare Extra")
 mcp.add_middleware(ToolValidationMiddleware())
 _settings: Settings | None = None
 
-API_BASE = "https://api.cloudflare.com/client/v4"
+# Imported here (not at the top) on purpose: annotations.py needs ``mcp`` from
+# this module, so importing it before the ``mcp = FastMCP(...)`` line above
+# would be a circular import. Do not move.
+from clr_cloudflare_mcp.annotations import (  # noqa: E402
+    destructive_tool,
+    read_tool,
+    remove_non_read_tools,
+    write_tool,
+)
 
-WRITE_TOOLS = [
-    "cf_add_dns_record",
-    "cf_update_dns_record",
-    "cf_delete_dns_record",
-    "cf_purge_cache",
-    "cf_add_route",
-]
+API_BASE = "https://api.cloudflare.com/client/v4"
 
 # Zone ID cache to avoid repeated lookups
 _zone_cache: dict[str, str] = {}
@@ -116,7 +118,7 @@ def _resolve_zone_id(domain: str) -> str:
 # ── Zone Tools ──────────────────────────────────────────────────────
 
 
-@mcp.tool
+@read_tool
 def cf_verify_token() -> dict[str, Any]:
     """Verify that the Cloudflare API token is valid.
 
@@ -128,7 +130,7 @@ def cf_verify_token() -> dict[str, Any]:
     return {"status": info.get("status", "unknown"), "id": info.get("id", "N/A")}
 
 
-@mcp.tool
+@read_tool
 def cf_list_zones() -> list[dict[str, Any]]:
     """List all Cloudflare zones (domains) in the account.
 
@@ -147,7 +149,7 @@ def cf_list_zones() -> list[dict[str, Any]]:
     ]
 
 
-@mcp.tool
+@read_tool
 def cf_get_zone(domain: str) -> dict[str, Any]:
     """Get details for a specific zone.
 
@@ -172,7 +174,7 @@ def cf_get_zone(domain: str) -> dict[str, Any]:
 # ── DNS Tools ───────────────────────────────────────────────────────
 
 
-@mcp.tool
+@read_tool
 def cf_list_dns_records(domain: str) -> list[dict[str, Any]]:
     """List all DNS records for a domain.
 
@@ -198,7 +200,7 @@ def cf_list_dns_records(domain: str) -> list[dict[str, Any]]:
     ]
 
 
-@mcp.tool
+@write_tool
 def cf_add_dns_record(
     domain: str,
     record_type: str,
@@ -233,7 +235,7 @@ def cf_add_dns_record(
     return {"id": r.get("id"), "type": r.get("type"), "name": r.get("name"), "content": r.get("content")}
 
 
-@mcp.tool
+@write_tool
 def cf_update_dns_record(
     domain: str,
     record_id: str,
@@ -266,7 +268,7 @@ def cf_update_dns_record(
     return {"id": r.get("id"), "type": r.get("type"), "name": r.get("name"), "content": r.get("content")}
 
 
-@mcp.tool
+@destructive_tool
 def cf_delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
     """Delete a DNS record.
 
@@ -285,7 +287,7 @@ def cf_delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
 # ── Cache Tools ─────────────────────────────────────────────────────
 
 
-@mcp.tool
+@destructive_tool
 def cf_purge_cache(
     domain: str,
     purge_all: bool = False,
@@ -322,7 +324,7 @@ def cf_purge_cache(
 # ── Workers Routes Tools ────────────────────────────────────────────
 
 
-@mcp.tool
+@read_tool
 def cf_list_routes(domain: str) -> list[dict[str, Any]]:
     """List Workers routes for a domain.
 
@@ -340,7 +342,7 @@ def cf_list_routes(domain: str) -> list[dict[str, Any]]:
     ]
 
 
-@mcp.tool
+@write_tool
 def cf_add_route(domain: str, pattern: str, worker: str) -> dict[str, Any]:
     """Create a Workers route for a domain.
 
@@ -423,10 +425,9 @@ def main() -> None:
         sys.exit(1)
 
     read_only = args.read_only if args.read_only is not None else _settings.cf_read_only
-    if read_only and WRITE_TOOLS:
-        for name in WRITE_TOOLS:
-            mcp.remove_tool(name)
-        logging.info("Read-only mode: %d write tools removed", len(WRITE_TOOLS))
+    if read_only:
+        removed = remove_non_read_tools(mcp)
+        logging.info("Read-only mode: %d non-read tools removed", removed)
 
     mcp.run(transport=args.transport)
 
