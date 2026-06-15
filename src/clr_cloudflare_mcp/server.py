@@ -5,6 +5,7 @@ import logging
 import re
 import sys
 from typing import Any
+from urllib.parse import urlencode
 
 import httpx
 from fastmcp import FastMCP
@@ -86,6 +87,38 @@ def _request(method: str, endpoint: str, data: dict[str, Any] | None = None) -> 
         raise Exception(f"API error (status {resp.status_code})")
 
     return result
+
+
+def _request_all_pages(
+    endpoint: str, params: dict[str, str] | None = None
+) -> list[dict[str, Any]]:
+    """Fetch every page of a paginated Cloudflare list endpoint.
+
+    Cloudflare list endpoints default to ``per_page=100`` and order results
+    by record type, so a single page can hide CNAME/TXT/MX records behind a
+    wall of A records. Loop until ``result_info.total_pages`` is exhausted.
+
+    Args:
+        endpoint: API endpoint path (without query string).
+        params: Optional query parameters (e.g. ``name``/``type`` filters).
+
+    Returns:
+        The concatenated ``result`` lists from every page.
+    """
+    query = dict(params or {})
+    query.setdefault("per_page", "100")
+    page = 1
+    records: list[dict[str, Any]] = []
+    while True:
+        query["page"] = str(page)
+        result = _request("GET", f"{endpoint}?{urlencode(query)}")
+        records.extend(result.get("result", []))
+        info = result.get("result_info") or {}
+        total_pages = info.get("total_pages")
+        if not total_pages or page >= total_pages:
+            break
+        page += 1
+    return records
 
 
 def _resolve_zone_id(domain: str) -> str:
@@ -175,18 +208,33 @@ def cf_get_zone(domain: str) -> dict[str, Any]:
 
 
 @read_tool
-def cf_list_dns_records(domain: str) -> list[dict[str, Any]]:
-    """List all DNS records for a domain.
+def cf_list_dns_records(
+    domain: str,
+    name: str | None = None,
+    record_type: str | None = None,
+) -> list[dict[str, Any]]:
+    """List DNS records for a domain, fetching all pages.
+
+    Cloudflare returns at most 100 records per page and orders them by type,
+    so without pagination non-A records (CNAME/TXT/MX) on later pages are
+    invisible. This fetches every page. Use ``name`` and/or ``record_type``
+    to filter server-side and return only matching records.
 
     Args:
         domain: Domain name or zone ID.
+        name: Optional exact record name filter (e.g. ``s3.example.com``).
+        record_type: Optional record type filter (A, AAAA, CNAME, MX, TXT, ...).
 
     Returns:
         A list of DNS record dictionaries with id, type, name, content,
         proxied, and ttl fields.
     """
     zone_id = _resolve_zone_id(domain)
-    result = _request("GET", f"zones/{zone_id}/dns_records")
+    params: dict[str, str] = {}
+    if name:
+        params["name"] = name
+    if record_type:
+        params["type"] = record_type.upper()
     return [
         {
             "id": r["id"],
@@ -196,7 +244,7 @@ def cf_list_dns_records(domain: str) -> list[dict[str, Any]]:
             "proxied": r.get("proxied", False),
             "ttl": r.get("ttl"),
         }
-        for r in result.get("result", [])
+        for r in _request_all_pages(f"zones/{zone_id}/dns_records", params)
     ]
 
 
