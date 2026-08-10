@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "clr-cloudflare-mcp"
-version = "0.1.0"
+version = "1.0.0"
 description = "MCP server for Cloudflare DNS, cache purge, and Workers routes"
 authors = [{name = "Clearminds", email = "noc@clearminds.se"}]
 readme = "README.md"
