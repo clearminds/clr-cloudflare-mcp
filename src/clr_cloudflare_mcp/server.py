@@ -152,7 +152,7 @@ def _resolve_zone_id(domain: str) -> str:
 
 
 @read_tool
-def cf_verify_token() -> dict[str, Any]:
+def verify_token() -> dict[str, Any]:
     """Verify that the Cloudflare API token is valid.
 
     Returns:
@@ -164,7 +164,7 @@ def cf_verify_token() -> dict[str, Any]:
 
 
 @read_tool
-def cf_list_zones() -> list[dict[str, Any]]:
+def list_zones() -> list[dict[str, Any]]:
     """List all Cloudflare zones (domains) in the account.
 
     Returns:
@@ -183,7 +183,7 @@ def cf_list_zones() -> list[dict[str, Any]]:
 
 
 @read_tool
-def cf_get_zone(domain: str) -> dict[str, Any]:
+def get_zone(domain: str) -> dict[str, Any]:
     """Get details for a specific zone.
 
     Args:
@@ -208,7 +208,7 @@ def cf_get_zone(domain: str) -> dict[str, Any]:
 
 
 @read_tool
-def cf_list_dns_records(
+def list_dns_records(
     domain: str,
     name: str | None = None,
     record_type: str | None = None,
@@ -249,7 +249,7 @@ def cf_list_dns_records(
 
 
 @write_tool
-def cf_add_dns_record(
+def add_dns_record(
     domain: str,
     record_type: str,
     name: str,
@@ -284,7 +284,7 @@ def cf_add_dns_record(
 
 
 @write_tool
-def cf_update_dns_record(
+def update_dns_record(
     domain: str,
     record_id: str,
     content: str | None = None,
@@ -317,7 +317,7 @@ def cf_update_dns_record(
 
 
 @destructive_tool
-def cf_delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
+def delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
     """Delete a DNS record.
 
     Args:
@@ -336,7 +336,7 @@ def cf_delete_dns_record(domain: str, record_id: str) -> dict[str, str]:
 
 
 @destructive_tool
-def cf_purge_cache(
+def purge_cache(
     domain: str,
     purge_all: bool = False,
     urls: list[str] | None = None,
@@ -373,7 +373,7 @@ def cf_purge_cache(
 
 
 @read_tool
-def cf_list_routes(domain: str) -> list[dict[str, Any]]:
+def list_routes(domain: str) -> list[dict[str, Any]]:
     """List Workers routes for a domain.
 
     Args:
@@ -391,7 +391,7 @@ def cf_list_routes(domain: str) -> list[dict[str, Any]]:
 
 
 @write_tool
-def cf_add_route(domain: str, pattern: str, worker: str) -> dict[str, Any]:
+def add_route(domain: str, pattern: str, worker: str) -> dict[str, Any]:
     """Create a Workers route for a domain.
 
     Args:
