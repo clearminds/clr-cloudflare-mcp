@@ -59,7 +59,7 @@ def test_list_dns_records_includes_records_from_later_pages(monkeypatch):
     ]
     monkeypatch.setattr(server, "_request", make_fake([page1, page2]))
 
-    out = server.list_dns_records.fn(ZONE_ID)
+    out = server.list_dns_records(ZONE_ID)
 
     names = {r["name"] for r in out}
     assert "s3.example.com" in names
@@ -72,7 +72,7 @@ def test_name_filter_passed_through(monkeypatch):
     fake = make_fake([[]])
     monkeypatch.setattr(server, "_request", fake)
 
-    server.list_dns_records.fn(ZONE_ID, name="s3.example.com")
+    server.list_dns_records(ZONE_ID, name="s3.example.com")
 
     assert fake.calls[0][2]["name"] == "s3.example.com"
 
@@ -81,6 +81,6 @@ def test_type_filter_uppercased(monkeypatch):
     fake = make_fake([[]])
     monkeypatch.setattr(server, "_request", fake)
 
-    server.list_dns_records.fn(ZONE_ID, record_type="cname")
+    server.list_dns_records(ZONE_ID, record_type="cname")
 
     assert fake.calls[0][2]["type"] == "CNAME"
